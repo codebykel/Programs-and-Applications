@@ -11,8 +11,9 @@ def extractText(dir, bar):
     except fitz.fitz.FileNotFoundError:
         return 400
 
-    numPages = len(doc)
-    pages = []
+    numPages = len(doc) # Variable for calculating the progress bar
+
+    pages = [] # Store the whole text for every page in doc
     for pageNum, page in enumerate(doc):
         pages.append(page.get_text())
 
