@@ -9,17 +9,16 @@ def extractText(dir, bar):
     try:
         doc = fitz.open(dir)
     except fitz.fitz.FileNotFoundError:
-        return 400
+        return None, 404
 
-    numPages = len(doc) # Variable for calculating the progress bar
-
-    pages = [] # Store the whole text for every page in doc
+    numPages = len(doc)
+    pages = []
     for pageNum, page in enumerate(doc):
         pages.append(page.get_text())
 
         bar["value"] = (pageNum + 1/numPages) * 100
     
-    return pages
+    return pages, 200
 
 
 def getHighlight(mode, keywords, pages, bar):
@@ -36,7 +35,6 @@ def getHighlight(mode, keywords, pages, bar):
 
             # Go to each sentences  and check if one of the keyword is a subtring of a sentence.  
             for sentence in sentences:
-
                 for keyword in keywords:
                     if keyword.lower() in sentence.lower():
                         sentenceHighlights.append(sentence)
@@ -104,7 +102,7 @@ def getHighlight(mode, keywords, pages, bar):
     return pageHighlights
 
 
-def makeHighlightedPDF(mode, pageHighlights, dir, bar):
+def makeHighlightedPDF(mode, keywords, pageHighlights, dir, bar):
 
     bar["value"] = 0
 
@@ -140,4 +138,4 @@ def makeHighlightedPDF(mode, pageHighlights, dir, bar):
     if mode == "summary":
         doc.save(f"{dir[:-5]}-summarized.pdf")
     else:
-        doc.save(f"{dir[:-5]}-keywords.pdf")
+        doc.save(f"{dir[:-5]}-Keys:{keywords}.pdf")
