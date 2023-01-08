@@ -1,56 +1,65 @@
 import prcs
+import tkinter as tk
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
-from ttkbootstrap.dialogs.dialogs import Messagebox
-from tkinter import filedialog
 from threading import Thread
 
 
 class App(tb.Window):
     def __init__(self):
         super().__init__(
-            title="PDF Highlighter", 
-            themename="litera", 
+            title="Highlight",
+            themename="superhero",
             resizable=(False, False)
         )
-        self.geometry("300x230")
+        self.geometry("300x235")
         self.position_center()
 
         self.progressBar = tb.Progressbar(self)
         self.progressBar.pack(padx=10, pady=(3, 0), fill=X)
 
-        # = Widgets for getting the directory of the PDF the will be highlighted =
+        # = Widgets for getting the directory of the PDF that will be highlighted =
 
         self.frameDir = tb.LabelFrame(self, text="Open File Directory", padding=5)
 
-        tb.Button(self.frameDir, text="Open File", command=self.openFile).grid(row=0, column=0, padx=(0, 5))
+        tb.Button(
+            self.frameDir, 
+            text="Open File",
+            command=self.openFile,
+            bootstyle=DANGER,
+        ).grid(row=0, column=0, padx=(0, 5))
 
         self.dir = tb.Entry(self.frameDir)
         self.dir.grid(row=0, column=1)
 
         self.frameDir.pack(pady=5)
 
-
         # ====== Widgets for choosing the highlight mode ===========
 
         self.frameHmode = tb.LabelFrame(self, text="Highlight Mode", padding=5)
+
         self.mode = tb.StringVar()
 
-        tb.Radiobutton(
+        """
+        I chose the radio button from tkinter rather than ttkbootstrap
+        due to an unknown error where the program instantly crushes
+        whenever I run the compiled version from pyinstaller.
+        """
+        tk.Radiobutton(
             self.frameHmode, 
             text="Summary", 
             variable=self.mode, 
             value="summary",
             command=self.click
-        ).grid(row=0, column=0, padx=(50, 5))
+        ).grid(row=0, column=0, padx=(40, 5))
 
-        tb.Radiobutton(
+        tk.Radiobutton(
             self.frameHmode, 
             text="Keyword", 
             variable=self.mode, 
             value="keyword",
             command=self.click
-        ).grid(row=0, column=1, padx=(5, 50))
+        ).grid(row=0, column=1, padx=(5, 40))
 
         self.keyword = tb.Entry(self.frameHmode, width=31)
 
@@ -61,9 +70,25 @@ class App(tb.Window):
         tb.Button(
             self, 
             text="Highlight", 
+            bootstyle=DANGER,
             command=lambda:Thread(target=self.highlight).start()
         ).pack(pady=15)
 
+    
+    def openFile(self):
+        dir = tk.filedialog.askopenfilename(
+            title="Select PDF",
+            initialdir="~/Documents",
+            filetypes=[("PDF Files", "*.pdf")]
+        )
+
+        """ 
+        Delete the current directory from entry and insert
+        a new one if the user has chosen a new directory. 
+        """
+        if dir:
+            self.dir.delete(0, END)
+            self.dir.insert(0, dir) 
 
 
     # Hide or show the entry for keywords based on the chosen radio button.
@@ -73,40 +98,54 @@ class App(tb.Window):
         else:
             self.keyword.grid_forget()
 
-        
-    def openFile(self):
-        dir = filedialog.askopenfilename(
-            title="Select PDF",
-            initialdir="~/Documents",
-            filetypes=[("PDF Files", "*.pdf")]
-        )
-
-        # Delete the current directory from the entry and insert a new one if the user had chosen a new directory.
-        if dir:
-            self.dir.delete(0, END)
-            self.dir.insert(0, dir)
     
-
     def highlight(self):
         self.progressBar.configure(bootstyle=PRIMARY)
 
-        pages = prcs.extractText(self.dir.get(), self.progressBar)
+        dir = self.dir.get().strip()
 
-        if pages[0] == 400:
-            Messagebox.show_warning("Invalid File Directory")
+        # Ensure that the path to file is not empty.
+        if dir == "":
+            tk.messagebox.showerror(
+                title="Error", 
+                message="There is no file to highlight"
+            )
+            return
+
+        pages, status = prcs.extractText(dir, self.progressBar)
+
+        # Ensure that the directory is valid. Status will return 200 if valid.
+        if status == 404:
+            tk.messagebox.showerror(
+                title="Error", 
+                message="Invalid File Directory"
+            )
+            return
+
+        # Ensure that the user had chosen a highlight mode.
+        if self.mode.get() == "":
+            tk.messagebox.showerror(
+                title="Error", 
+                message="Choose highlight mode first"
+            )
+            self.progressBar.configure(bootstyle=WARNING)
             return
         
+        mode = self.mode.get()
+        keywords = self.keyword.get().split(", ")
+
         pageHighlights = prcs.getHighlight(
-            self.mode.get(), 
-            self.keyword.get().split(", "), 
+            mode, 
+            keywords, 
             pages,
             self.progressBar
         )
 
         prcs.makeHighlightedPDF(
-            self.mode.get(),
+            mode,
+            keywords,
             pageHighlights, 
-            self.dir.get(),
+            dir,
             self.progressBar,
         )
 
